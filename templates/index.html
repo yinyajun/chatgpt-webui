@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web-UI</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", "Luxi Sans", "Segoe UI", "Hiragino Sans GB", "Microsoft Yahei", sans-serif, "Apple Logo";
+            margin: 0;
+            padding: 0;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        #app, .message.question, .input-area {
+            background-color: #f3f6fc;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-top: 40px;
+        }
+
+        .message {
+            width: 100%;
+            padding: 10px 20px;
+            border: solid 1px #c3c6cb;
+            box-sizing: border-box;
+            background-color: white;
+        }
+
+        .message p, .message pre {
+            margin: 10px 0;
+        }
+
+        .message.question {
+            border-radius: 10px 10px 0 0;
+        }
+
+        .message.answer {
+            margin-top: -1px;
+            margin-bottom: 20px;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .message pre {
+            width: 100%;
+            padding: 10px;
+            background-color: #23241f;
+            border-radius: 6px;
+            color: #f8f8f2;
+            box-sizing: border-box;
+            overflow-x: auto;
+        }
+
+        .input-area {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            border-top: 1px solid #ffffff;
+        }
+
+        textarea {
+            flex: 1;
+            height: 52px;
+            padding: 5px 10px;
+            line-height: 20px;
+            resize: none;
+            border: 1px solid #c3c6cb;
+            outline: none;
+            box-sizing: border-box;
+            border-radius: 6px;
+        }
+
+        button {
+            margin-left: 10px;
+            height: 40px;
+            padding: 0 20px;
+            line-height: 40px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        button:disabled {
+            background-color: #c3c6cb;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="messages-container">
+        <div id="messages"></div>
+    </div>
+    <div class="input-area">
+        <textarea id="input" placeholder="输入你的内容，按shift+enter发送"></textarea>
+        <button id="send" onclick="sendMessage()">发送</button>
+    </div>
+</div>
+<script>
+    let msgContainer = document.getElementById('messages');
+    let input = document.getElementById('input');
+    let sendBtn = document.getElementById('send');
+
+    let qaIdx = 0, answers = {}, answerContent = '', answerWords = [];
+    let codeStart = false, lastWord = '', lastLastWord = '';
+    let typingTimer = null, typing = false, typingIdx = 0, contentIdx = 0, contentEnd = false;
+
+
+    input.addEventListener("keydown", function (event) {
+        if (event.keyCode === 13 && event.shiftKey) {
+            event.preventDefault();
+            sendBtn.click();
+        }
+    });
+
+
+    function sendMessage() {
+        const inputValue = input.value;
+        if (!inputValue) {
+            return;
+        }
+
+        const question = document.createElement('div');
+        question.setAttribute('class', 'message question');
+        question.setAttribute('id', 'question-' + qaIdx);
+        question.innerHTML = inputValue;
+        msgContainer.appendChild(question);
+
+        const answer = document.createElement('div');
+        answer.setAttribute('class', 'message answer');
+        answer.setAttribute('id', 'answer-' + qaIdx);
+        answer.innerHTML = "AI思考中…";
+        msgContainer.appendChild(answer);
+
+        answers[qaIdx] = document.getElementById('answer-' + qaIdx);
+
+        input.value = '';
+        input.disabled = true;
+        sendBtn.disabled = true;
+
+        typingTimer = setInterval(typingWords, 50);
+
+        chatStream(inputValue);
+    }
+
+    function chatStream(query) {
+        query = encodeURIComponent(query.replace(/\+/g, '{[$add$]}'));
+        const url = "./stream?query=" + query;
+        const eventSource = new EventSource(url);
+
+        eventSource.addEventListener("open", (event) => {
+            console.log("连接已建立", JSON.stringify(event));
+        });
+
+        eventSource.addEventListener("message", (event) => {
+            try {
+                let result = JSON.parse(event.data);
+                let content = result.content;
+                if (content === '[FINISHED]') {
+                    console.log("连接已断开")
+                    eventSource.close()
+                    contentEnd = true;
+                } else {
+                    answerWords.push(result.content);
+                    contentIdx += 1;
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        });
+
+        eventSource.addEventListener("error", (event) => {
+            console.error("发生错误：", JSON.stringify(event));
+        });
+    }
+
+
+    function typingWords() {
+        if (contentEnd && contentIdx === typingIdx) {
+            clearInterval(typingTimer);
+            answerContent = '';
+            answerWords = [];
+            answers = [];
+            qaIdx += 1;
+            typingIdx = 0;
+            contentIdx = 0;
+            contentEnd = false;
+            lastWord = '';
+            lastLastWord = '';
+            input.disabled = false;
+            sendBtn.disabled = false;
+            console.log((new Date().getTime()), 'typing end');
+            return;
+        }
+        if (contentIdx <= typingIdx) {
+            return;
+        }
+        if (typing) {
+            return;
+        }
+        typing = true;
+
+        if (!answers[qaIdx]) {
+            answers[qaIdx] = document.getElementById('answer-' + qaIdx);
+        }
+
+        const content = answerWords[typingIdx];
+        if (content.indexOf('`') != -1) {
+            if (content.indexOf('```') != -1) {
+                codeStart = !codeStart;
+            } else if (content.indexOf('``') != -1 && (lastWord + content).indexOf('```') != -1) {
+                codeStart = !codeStart;
+            } else if (content.indexOf('`') != -1 && (lastLastWord + lastWord + content).indexOf('```') != -1) {
+                codeStart = !codeStart;
+            }
+        }
+
+        lastLastWord = lastWord;
+        lastWord = content;
+
+        answerContent += content;
+        answers[qaIdx].innerHTML = answerContent + (codeStart ? '\n\n```' : '');
+
+        typingIdx += 1;
+        typing = false;
+    }
+
+</script>
+</body>
+</html>
