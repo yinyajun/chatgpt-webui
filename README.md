@@ -22,7 +22,7 @@ export OPENAI_API_KEY = "xxxxxxx"
 export OPENAI_API_BASE = "xxxxxxx"
 export AZURE_GPT35 = "xxxxxxx" // gpt-35模型对应的deploymentid
 ```
-如果用的是openai的，应该只要配置`OPENAI_API_KEY`环境变量即可。有bug的话，直接看`model.py`
+如果用的是openai的，需要相应的改动，这个只要用过`openai`包的，肯定知道怎么改。有bug的话，直接看`model.py`
 
 最后，就是`python3 server.py`。
 看到下面就算服务起来了。
