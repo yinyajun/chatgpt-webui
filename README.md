@@ -42,7 +42,7 @@ http://localhost:8000/gradio_ui/
 ![](./doc/gradio_ui.png)
 
 * 有几个预设的prompt，也可以自定义
-* 一定要点**发布设定**按钮，才会生效。 
+* 当提问后，prompt将再也不可以修改
 * 想改的话，请看`gradio_ui.py`
 
 ## web_ui界面
