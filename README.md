@@ -41,7 +41,9 @@ http://localhost:8000/gradio_ui/
 预设的prompt有部分是抄[awesome-chatgpt-prompts-zh](https://github.com/PlexPt/awesome-chatgpt-prompts-zh/blob/main/prompts-zh.json) 的。
 ![](./doc/gradio_ui.png)
 
-想改ui，加功能的话，请看`gradio_ui.py`
+* 有几个预设的prompt，也可以自定义
+* 一定要点**发布设定**按钮，才会生效。 
+* 想改的话，请看`gradio_ui.py`
 
 ## web_ui界面
 http://localhost:8000/web_ui
